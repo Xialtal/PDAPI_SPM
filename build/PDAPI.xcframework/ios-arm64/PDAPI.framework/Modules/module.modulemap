@@ -1,0 +1,4 @@
+framework module PDAPI {
+  header "PDAPI-Swift.h"
+  requires objc
+}

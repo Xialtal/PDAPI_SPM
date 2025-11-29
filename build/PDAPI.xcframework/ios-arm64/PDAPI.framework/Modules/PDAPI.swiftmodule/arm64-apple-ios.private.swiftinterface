@@ -1,0 +1,728 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 6.2.1 effective-5.10 (swiftlang-6.2.1.4.8 clang-1700.4.4.1)
+// swift-module-flags: -target arm64-apple-ios16.0 -enable-objc-interop -enable-library-evolution -swift-version 5 -enforce-exclusivity=checked -O -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -module-name PDAPI -package-name PDAPI
+// swift-module-flags-ignorable: -no-verify-emitted-module-interface -formal-cxx-interoperability-mode=off -interface-compiler-version 6.2.1
+import Foundation
+import Network
+import OSLog
+import Swift
+import _Concurrency
+import _StringProcessing
+import _SwiftConcurrencyShims
+import zlib
+public enum APIError : Swift.Error {
+  case bootstrapFailed((any Swift.Error)?)
+  case queueRemoval
+}
+final public class API : @unchecked Swift.Sendable {
+  public enum ConnectionState : Swift.String, Swift.Sendable {
+    case disconnected
+    case connecting
+    case ready
+    #if compiler(>=5.3) && $NonescapableTypes
+    public init?(rawValue: Swift.String)
+    #endif
+    public typealias RawValue = Swift.String
+    public var rawValue: Swift.String {
+      get
+    }
+  }
+  final public let stateStream: _Concurrency.AsyncStream<PDAPI.API.ConnectionState>
+  final public let notificationStream: _Concurrency.AsyncStream<Swift.String>
+  public init()
+  final public func connect(as type: PDAPI.LoginType, inBackground: Swift.Bool = false) async throws
+  final public func disconnect()
+  final public func setLogResponses(to type: PDAPI.ResponsesLogType)
+  @discardableResult
+  final public func send(_ command: any PDAPI.Command) async throws -> Swift.String
+  final public func upload(request data: PDAPI.UploadRequest) -> _Concurrency.AsyncStream<PDAPI.UploadProgressStatus>
+  @objc deinit
+}
+public enum AuthCommand : Swift.Sendable {
+  case login(data: PDAPI.LoginRequest)
+  case auth(data: PDAPI.AuthRequest)
+}
+extension PDAPI.AuthCommand : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+  public var isInitializer: Swift.Bool {
+    get
+  }
+}
+public protocol Command : Swift.Sendable {
+  var id: Swift.Int { get }
+  var title: Swift.String { get }
+  var body: Swift.String { get }
+  var compressed: Swift.Bool { get }
+  var generatorCmd: Swift.Int { get }
+  var isOneWay: Swift.Bool { get }
+  var isInitializer: Swift.Bool { get }
+}
+extension PDAPI.Command {
+  public var compressed: Swift.Bool {
+    get
+  }
+  public var generatorCmd: Swift.Int {
+    get
+  }
+  public var isOneWay: Swift.Bool {
+    get
+  }
+  public var isInitializer: Swift.Bool {
+    get
+  }
+}
+public enum CommonCommand : Swift.Sendable {
+  case report(code: PDAPI.CommonCommand.ReportCode, id: Swift.Int, message: Swift.String)
+  case syncUnread(type: Swift.Int, value: Swift.Int)
+  case notify(token: Swift.String, a: Swift.Int, b: Swift.Int)
+  public enum EventSubscribe {
+    case subscribe(memberId: Swift.Int)
+    case unsubscribe(memberId: Swift.Int)
+  }
+  public enum ReportCode : Swift.UInt8, Swift.Sendable {
+    case post
+    case comment
+    case reputation
+    #if compiler(>=5.3) && $NonescapableTypes
+    public init?(rawValue: Swift.UInt8)
+    #endif
+    public typealias RawValue = Swift.UInt8
+    public var rawValue: Swift.UInt8 {
+      get
+    }
+  }
+}
+extension PDAPI.CommonCommand.EventSubscribe : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+  public var isInitializer: Swift.Bool {
+    get
+  }
+}
+extension PDAPI.CommonCommand : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+public enum DeviceCommand : Swift.Sendable {
+  case entry(tag: Swift.String, subTag: Swift.String = "")
+  case vendor(typeCode: PDAPI.DeviceCommand.DeviceType, vendorCode: Swift.String)
+  case type(typeCode: PDAPI.DeviceCommand.DeviceType)
+  public enum DeviceType : Swift.String, Swift.Sendable {
+    case phone
+    case ebook
+    case pad
+    case smartWatch
+    #if compiler(>=5.3) && $NonescapableTypes
+    public init?(rawValue: Swift.String)
+    #endif
+    public typealias RawValue = Swift.String
+    public var rawValue: Swift.String {
+      get
+    }
+  }
+}
+extension PDAPI.DeviceCommand : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+public enum ForumCommand : Swift.Sendable {
+  case list
+  case info(id: Swift.Int)
+  case view(id: Swift.Int, offset: Swift.Int, itemsPerPage: Swift.Int)
+  case jump(data: PDAPI.ForumJumpRequest)
+  case markRead(id: Swift.Int, isTopic: Swift.Bool)
+  case announcement(linkId: Swift.Int)
+  case template(type: PDAPI.ForumCommand.TemplateType, action: PDAPI.ForumCommand.TemplateAction)
+  case attachmentDownloadUrl(id: Swift.Int)
+  public enum TemplateAction : Swift.Sendable {
+    case get
+    case send(Swift.String)
+    case preview(Swift.String)
+  }
+  public enum TemplateType : Swift.Sendable {
+    case post(topicId: Swift.Int)
+    case topic(forumId: Swift.Int)
+  }
+  public enum Topic : Swift.Sendable {
+    case view(data: PDAPI.TopicRequest)
+    case edit(data: PDAPI.TopicEditRequest)
+    case history(id: Swift.Int)
+    public enum Poll {
+      case vote(topicId: Swift.Int, selections: [[Swift.Int]])
+    }
+  }
+  public enum Post : Swift.Sendable {
+    case send(data: PDAPI.PostSendRequest)
+    case edit(data: PDAPI.PostSendRequest, postId: Swift.Int, reason: Swift.String)
+    case preview(data: PDAPI.PostSendRequest, postId: Swift.Int = 0)
+    case karma(postId: Swift.Int, action: PDAPI.ForumCommand.Post.KarmaAction)
+    case delete(postIds: [Swift.Int])
+    public enum KarmaAction : Swift.UInt8, Swift.Sendable {
+      case history
+      case minus
+      case plus
+      #if compiler(>=5.3) && $NonescapableTypes
+      public init?(rawValue: Swift.UInt8)
+      #endif
+      public typealias RawValue = Swift.UInt8
+      public var rawValue: Swift.UInt8 {
+        get
+      }
+    }
+  }
+}
+extension PDAPI.ForumCommand.Topic : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+extension PDAPI.ForumCommand.Topic.Poll : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+extension PDAPI.ForumCommand.Post : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+extension PDAPI.ForumCommand : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+public enum MemberCommand : Swift.Sendable {
+  case summary
+  case info(memberId: Swift.Int)
+  case reputation(data: PDAPI.MemberReputationRequest)
+  case reputationVotes(data: PDAPI.MemberReputationVotesRequest)
+  case security(data: PDAPI.MemberSecurityRequest)
+  case sessions(pageType: PDAPI.MemberCommand.MemberSessionsType, pageId: Swift.Int)
+  case mention(showPosts: Swift.Bool, offset: Swift.Int, itemsPerPage: Swift.Int)
+  case history(page: Swift.Int, perPage: Swift.Int)
+  case device(data: PDAPI.MemberDeviceRequest)
+  case avatar(memberId: Swift.Int, avatar: Foundation.Data)
+  case profile(data: PDAPI.MemberProfileRequest)
+  case notice(memberId: Swift.Int, message: Swift.String)
+  public enum Favorites : Swift.Sendable {
+    case list(sort: [PDAPI.MemberCommand.Favorites.Sort], offset: Swift.Int, perPage: Swift.Int)
+    case modify(id: Swift.Int, type: PDAPI.MemberCommand.Favorites.Element, action: PDAPI.MemberCommand.Favorites.Action)
+    case notify(id: Swift.Int, flag: Swift.Int, new: PDAPI.MemberCommand.Favorites.Notify)
+    case readAll
+    public enum Action : Swift.Sendable {
+      case add
+      case pin
+      case delete
+      case unpin
+      public static func == (a: PDAPI.MemberCommand.Favorites.Action, b: PDAPI.MemberCommand.Favorites.Action) -> Swift.Bool
+      public func hash(into hasher: inout Swift.Hasher)
+      public var hashValue: Swift.Int {
+        get
+      }
+    }
+    public enum Sort : Swift.UInt8, Swift.Sendable {
+      case reverse
+      case byName
+      case unreadFirst
+      #if compiler(>=5.3) && $NonescapableTypes
+      public init?(rawValue: Swift.UInt8)
+      #endif
+      public typealias RawValue = Swift.UInt8
+      public var rawValue: Swift.UInt8 {
+        get
+      }
+    }
+    public enum Notify : Swift.UInt8, Swift.Sendable {
+      case always
+      case once
+      case doNot
+      case hatUpdate
+      #if compiler(>=5.3) && $NonescapableTypes
+      public init?(rawValue: Swift.UInt8)
+      #endif
+      public typealias RawValue = Swift.UInt8
+      public var rawValue: Swift.UInt8 {
+        get
+      }
+    }
+    public enum Element : Swift.UInt8, Swift.Sendable {
+      case forum
+      case topic
+      #if compiler(>=5.3) && $NonescapableTypes
+      public init?(rawValue: Swift.UInt8)
+      #endif
+      public typealias RawValue = Swift.UInt8
+      public var rawValue: Swift.UInt8 {
+        get
+      }
+    }
+  }
+  public enum Bookmarks {
+    case list
+    case add(data: PDAPI.BookmarkAddRequest)
+    case edit(data: PDAPI.BookmarkRequest)
+    case delete(data: PDAPI.BookmarkRequest)
+  }
+  public enum MemberSessionsType : Swift.String, Swift.Sendable {
+    case topic
+    case forum
+    case index
+    #if compiler(>=5.3) && $NonescapableTypes
+    public init?(rawValue: Swift.String)
+    #endif
+    public typealias RawValue = Swift.String
+    public var rawValue: Swift.String {
+      get
+    }
+  }
+}
+extension PDAPI.MemberCommand.Favorites : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+extension PDAPI.MemberCommand.Bookmarks : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+extension PDAPI.MemberCommand : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+public enum QMSCommand : Swift.Sendable {
+  case list
+  case blacklist
+  case info(id: Swift.Int)
+  case toBlackList(opponentId: Swift.Int, add: Swift.Bool)
+  case pushEvent(opponentId: Swift.Int, dialogId: Swift.Int, statusCode: Swift.Int)
+  public enum Dialog {
+    case view(data: PDAPI.QMSViewDialogRequest)
+    case create(data: PDAPI.QMSAddDialogRequest)
+    case delete(id: Swift.Int)
+  }
+  public enum Message {
+    case send(data: PDAPI.QMSSendMessageRequest)
+    case delete(dialogId: Swift.Int, messageId: Swift.Int, forAll: Swift.Bool)
+  }
+}
+extension PDAPI.QMSCommand.Dialog : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+extension PDAPI.QMSCommand.Message : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+extension PDAPI.QMSCommand : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+public enum SearchCommand : Swift.Sendable {
+  case members(term: Swift.String, offset: Swift.Int, number: Swift.Int)
+  case content(on: PDAPI.SearchCommand.SearchOn, authorId: Swift.Int?, text: Swift.String, sort: PDAPI.SearchCommand.SearchSort, offset: Swift.Int, amount: Swift.Int)
+  public enum SearchOn : Swift.Sendable {
+    case site
+    case forum(id: Swift.Int?, sIn: PDAPI.SearchCommand.ForumSearchIn, asTopics: Swift.Bool = false)
+    case topic(id: Swift.Int)
+  }
+  public enum SearchSort : Swift.Int, Swift.Sendable {
+    case dateDescSort
+    case dateAscSort
+    case matchSort
+    #if compiler(>=5.3) && $NonescapableTypes
+    public init?(rawValue: Swift.Int)
+    #endif
+    public typealias RawValue = Swift.Int
+    public var rawValue: Swift.Int {
+      get
+    }
+  }
+  public enum ForumSearchIn : Swift.Int, Swift.Sendable {
+    case all
+    case posts
+    case titles
+    #if compiler(>=5.3) && $NonescapableTypes
+    public init?(rawValue: Swift.Int)
+    #endif
+    public typealias RawValue = Swift.Int
+    public var rawValue: Swift.Int {
+      get
+    }
+  }
+}
+extension PDAPI.SearchCommand : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+public enum SiteCommand : Swift.Sendable {
+  case articlesList(offset: Swift.Int, amount: Swift.Int)
+  case article(id: Swift.Int)
+  case articleComment(articleId: Swift.Int, parentId: Swift.Int, msg: Swift.String)
+  case jump(time: Swift.Int, next: Swift.Bool, category: Swift.Int)
+  case menu(par: Swift.Int)
+  case articleCommentLike(articleId: Swift.Int, commentId: Swift.Int)
+  case articleCommentHide(articleId: Swift.Int, commentId: Swift.Int)
+  case vote(pollId: Swift.Int, selections: [Swift.Int])
+}
+extension PDAPI.SiteCommand : PDAPI.Command {
+  public var id: Swift.Int {
+    get
+  }
+  public var title: Swift.String {
+    get
+  }
+  public var body: Swift.String {
+    get
+  }
+}
+public enum LoginType : Swift.CustomStringConvertible {
+  case anonymous
+  case account(data: PDAPI.AuthRequest)
+  public var description: Swift.String {
+    get
+  }
+}
+extension Network.NWPath.Status : @retroactive Swift.CustomStringConvertible {
+  public var description: Swift.String {
+    get
+  }
+}
+extension Network.NWConnection.State : @retroactive Swift.CustomStringConvertible {
+  public var description: Swift.String {
+    get
+  }
+}
+public enum ResponsesLogType {
+  case none
+  case short
+  case full
+  public static func == (a: PDAPI.ResponsesLogType, b: PDAPI.ResponsesLogType) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+public enum UploadFailureReason : Swift.Sendable {
+  case serverDenied
+  case fileSizeTooBig
+  case fileNotAllowed
+  case fileTypeNotAllowed
+  case responseStatus(Swift.Int)
+  case other(any Swift.Error)
+  public init(rawValue: Swift.Int)
+}
+public enum UploadProgressStatus : Swift.CustomStringConvertible, Swift.Sendable {
+  case done(Swift.String)
+  case uploading(Swift.Int)
+  case initialized
+  case error(PDAPI.UploadFailureReason)
+  public var description: Swift.String {
+    get
+  }
+}
+public struct AuthRequest : Swift.Equatable, Swift.Sendable {
+  public init(memberId: Swift.Int, token: Swift.String, hidden: Swift.Bool)
+  public static func == (a: PDAPI.AuthRequest, b: PDAPI.AuthRequest) -> Swift.Bool
+}
+public struct LoginRequest : Swift.Sendable {
+  public var captcha: Swift.Int
+  public init(name: Swift.String, password: Swift.String, hidden: Swift.Bool, captcha: Swift.Int = 0)
+}
+public struct BookmarkRequest : Swift.Sendable {
+  public let id: Swift.Int
+  public let parentId: Swift.Int
+  public let name: Swift.String
+  public let number: Swift.Int
+  public let format: PDAPI.BookmarkFormat
+  public init(id: Swift.Int, parentId: Swift.Int, name: Swift.String, number: Swift.Int, format: PDAPI.BookmarkFormat)
+}
+public struct BookmarkAddRequest : Swift.Sendable {
+  public let name: Swift.String
+  public let number: Swift.Int
+  public let format: PDAPI.BookmarkFormat
+  public init(name: Swift.String, number: Swift.Int, format: PDAPI.BookmarkFormat)
+}
+public enum BookmarkFormat : Swift.Sendable {
+  case folder
+  case url(url: Swift.String)
+}
+public struct ForumJumpRequest : Swift.Sendable {
+  public init(type: PDAPI.ForumJumpRequest.JumpType, postId: Swift.Int, allPosts: Swift.Bool, topicId: Swift.Int)
+  public enum JumpType : Swift.UInt8, Swift.Sendable {
+    case new
+    case last
+    case post
+    #if compiler(>=5.3) && $NonescapableTypes
+    public init?(rawValue: Swift.UInt8)
+    #endif
+    public typealias RawValue = Swift.UInt8
+    public var rawValue: Swift.UInt8 {
+      get
+    }
+  }
+}
+public struct PostSendRequest : Swift.Sendable {
+  public init(topicId: Swift.Int, content: Swift.String, attaches: [Swift.Int], flag: Swift.Int)
+}
+public struct TopicEditRequest : Swift.Sendable {
+  public init(id: Swift.Int, title: Swift.String, description: Swift.String)
+}
+public struct TopicRequest : Swift.Sendable {
+  public init(id: Swift.Int, offset: Swift.Int, itemsPerPage: Swift.Int, showPostMode: Swift.Int)
+}
+public struct MemberReputationRequest : Swift.Sendable {
+  public init(memberId: Swift.Int, vote: PDAPI.MemberReputationRequest.VoteType, postId: Swift.Int, reason: Swift.String)
+  public enum VoteType : Swift.UInt8, Swift.Sendable {
+    case minus
+    case plus
+    #if compiler(>=5.3) && $NonescapableTypes
+    public init?(rawValue: Swift.UInt8)
+    #endif
+    public typealias RawValue = Swift.UInt8
+    public var rawValue: Swift.UInt8 {
+      get
+    }
+  }
+}
+public struct MemberProfileRequest : Swift.Sendable {
+  public let memberId: Swift.Int
+  public let city: Swift.String
+  public let gender: PDAPI.MemberProfileRequest.Gender
+  public let status: Swift.String
+  public let about: Swift.String
+  public let signature: Swift.String
+  public enum Gender : Swift.UInt8, Swift.Sendable {
+    case unknown
+    case male
+    case female
+    #if compiler(>=5.3) && $NonescapableTypes
+    public init?(rawValue: Swift.UInt8)
+    #endif
+    public typealias RawValue = Swift.UInt8
+    public var rawValue: Swift.UInt8 {
+      get
+    }
+  }
+  #if compiler(>=5.3) && $NonescapableTypes
+  public init(memberId: Swift.Int, city: Swift.String, gender: PDAPI.MemberProfileRequest.Gender, status: Swift.String, about: Swift.String, signature: Swift.String, birthday: Foundation.Date?)
+  #endif
+}
+public struct MemberDeviceRequest : Swift.Sendable {
+  public init(memberId: Swift.Int, action: PDAPI.MemberDeviceRequest.Action, fullTag: Swift.String, primary: Swift.Bool)
+  public enum Action : Swift.UInt8, Swift.Sendable {
+    case remove
+    case add
+    case modify
+    #if compiler(>=5.3) && $NonescapableTypes
+    public init?(rawValue: Swift.UInt8)
+    #endif
+    public typealias RawValue = Swift.UInt8
+    public var rawValue: Swift.UInt8 {
+      get
+    }
+  }
+}
+public struct MemberReputationVotesRequest : Swift.Sendable {
+  public init(memberId: Swift.Int, type: PDAPI.MemberReputationVotesRequest.ReputationList, offset: Swift.Int, count: Swift.Int)
+  public enum ReputationList : Swift.UInt8, Swift.Sendable {
+    case to
+    case from
+    #if compiler(>=5.3) && $NonescapableTypes
+    public init?(rawValue: Swift.UInt8)
+    #endif
+    public typealias RawValue = Swift.UInt8
+    public var rawValue: Swift.UInt8 {
+      get
+    }
+  }
+}
+public struct MemberSecurityRequest : Swift.Sendable {
+  public init(action: PDAPI.MemberSecurityRequest.Action, mid: Swift.Int, ts: Swift.Int, sig: Swift.String, value: Swift.String)
+  public enum Action : Swift.UInt8, Swift.Sendable {
+    case resendActivation
+    case activate
+    case setEmail
+    case confirmEmail
+    case setPassword
+    case requestResetPassword
+    case resetPassword
+    case setLogin
+    #if compiler(>=5.3) && $NonescapableTypes
+    public init?(rawValue: Swift.UInt8)
+    #endif
+    public typealias RawValue = Swift.UInt8
+    public var rawValue: Swift.UInt8 {
+      get
+    }
+  }
+}
+public struct QMSViewDialogRequest : Swift.Sendable {
+  public init(dialogId: Swift.Int, messageId: Swift.Int, limit: Swift.Int)
+}
+public struct QMSAddDialogRequest : Swift.Sendable {
+  public init(opponentId: Swift.Int, dialogTitle: Swift.String, message: Swift.String)
+}
+public struct QMSSendMessageRequest : Swift.Sendable {
+  public init(dialogId: Swift.Int, message: Swift.String, fileList: [Swift.Int])
+}
+public struct UploadRequest {
+  public let fileName: Swift.String
+  public let fileSize: Swift.Int
+  public let fileData: Foundation.Data
+  public let md5: Swift.String
+  public let isQms: Swift.Bool
+  public init(fileName: Swift.String, fileSize: Swift.Int, fileData: Foundation.Data, md5: Swift.String, isQms: Swift.Bool)
+}
+extension PDAPI.API.ConnectionState : Swift.Equatable {}
+extension PDAPI.API.ConnectionState : Swift.Hashable {}
+extension PDAPI.API.ConnectionState : Swift.RawRepresentable {}
+extension PDAPI.CommonCommand.ReportCode : Swift.Equatable {}
+extension PDAPI.CommonCommand.ReportCode : Swift.Hashable {}
+extension PDAPI.CommonCommand.ReportCode : Swift.RawRepresentable {}
+extension PDAPI.DeviceCommand.DeviceType : Swift.Equatable {}
+extension PDAPI.DeviceCommand.DeviceType : Swift.Hashable {}
+extension PDAPI.DeviceCommand.DeviceType : Swift.RawRepresentable {}
+extension PDAPI.ForumCommand.Post.KarmaAction : Swift.Equatable {}
+extension PDAPI.ForumCommand.Post.KarmaAction : Swift.Hashable {}
+extension PDAPI.ForumCommand.Post.KarmaAction : Swift.RawRepresentable {}
+extension PDAPI.MemberCommand.Favorites.Action : Swift.Equatable {}
+extension PDAPI.MemberCommand.Favorites.Action : Swift.Hashable {}
+extension PDAPI.MemberCommand.Favorites.Sort : Swift.Equatable {}
+extension PDAPI.MemberCommand.Favorites.Sort : Swift.Hashable {}
+extension PDAPI.MemberCommand.Favorites.Sort : Swift.RawRepresentable {}
+extension PDAPI.MemberCommand.Favorites.Notify : Swift.Equatable {}
+extension PDAPI.MemberCommand.Favorites.Notify : Swift.Hashable {}
+extension PDAPI.MemberCommand.Favorites.Notify : Swift.RawRepresentable {}
+extension PDAPI.MemberCommand.Favorites.Element : Swift.Equatable {}
+extension PDAPI.MemberCommand.Favorites.Element : Swift.Hashable {}
+extension PDAPI.MemberCommand.Favorites.Element : Swift.RawRepresentable {}
+extension PDAPI.MemberCommand.MemberSessionsType : Swift.Equatable {}
+extension PDAPI.MemberCommand.MemberSessionsType : Swift.Hashable {}
+extension PDAPI.MemberCommand.MemberSessionsType : Swift.RawRepresentable {}
+extension PDAPI.SearchCommand.SearchSort : Swift.Equatable {}
+extension PDAPI.SearchCommand.SearchSort : Swift.Hashable {}
+extension PDAPI.SearchCommand.SearchSort : Swift.RawRepresentable {}
+extension PDAPI.SearchCommand.ForumSearchIn : Swift.Equatable {}
+extension PDAPI.SearchCommand.ForumSearchIn : Swift.Hashable {}
+extension PDAPI.SearchCommand.ForumSearchIn : Swift.RawRepresentable {}
+extension PDAPI.ResponsesLogType : Swift.Equatable {}
+extension PDAPI.ResponsesLogType : Swift.Hashable {}
+extension PDAPI.ForumJumpRequest.JumpType : Swift.Equatable {}
+extension PDAPI.ForumJumpRequest.JumpType : Swift.Hashable {}
+extension PDAPI.ForumJumpRequest.JumpType : Swift.RawRepresentable {}
+extension PDAPI.MemberReputationRequest.VoteType : Swift.Equatable {}
+extension PDAPI.MemberReputationRequest.VoteType : Swift.Hashable {}
+extension PDAPI.MemberReputationRequest.VoteType : Swift.RawRepresentable {}
+extension PDAPI.MemberProfileRequest.Gender : Swift.Equatable {}
+extension PDAPI.MemberProfileRequest.Gender : Swift.Hashable {}
+extension PDAPI.MemberProfileRequest.Gender : Swift.RawRepresentable {}
+extension PDAPI.MemberDeviceRequest.Action : Swift.Equatable {}
+extension PDAPI.MemberDeviceRequest.Action : Swift.Hashable {}
+extension PDAPI.MemberDeviceRequest.Action : Swift.RawRepresentable {}
+extension PDAPI.MemberReputationVotesRequest.ReputationList : Swift.Equatable {}
+extension PDAPI.MemberReputationVotesRequest.ReputationList : Swift.Hashable {}
+extension PDAPI.MemberReputationVotesRequest.ReputationList : Swift.RawRepresentable {}
+extension PDAPI.MemberSecurityRequest.Action : Swift.Equatable {}
+extension PDAPI.MemberSecurityRequest.Action : Swift.Hashable {}
+extension PDAPI.MemberSecurityRequest.Action : Swift.RawRepresentable {}
